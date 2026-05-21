@@ -1,0 +1,20 @@
+---
+description: High-performance C++ and ROS 2 engineering constraints for the kinematics engine.
+globs: core/**/*,ros2_ws/**/*
+alwaysApply: false
+---
+# C++ & ROS 2 Robotics Standards
+
+## Tech Stack Constraints
+- **Standard:** Modern C++17 strictly (Do NOT introduce C++20 features unless explicitly requested).
+- **Primary Dependencies:** Native ONNX Runtime C++ API (`<onnxruntime_cxx_api.h>`), OpenCV 4.x, Eigen for linear algebra / matrix mechanics, ROS 2 Humble/Iron.
+- **Build System:** Modern modular CMake configuration.
+
+## Memory & Architecture Standards
+- Strictly enforce Resource Acquisition Is Initialization (RAII).
+- **ZERO raw pointers (`*`) for resource management.** Utilize `std::unique_ptr` and `std::shared_ptr`.
+- Decouple processing components cleanly from framework dependencies where applicable to maximize portability.
+
+## Naming Conventions
+- `snake_case` for C++ source/header filenames and variable names.
+- `PascalCase` for Class structures and Types.

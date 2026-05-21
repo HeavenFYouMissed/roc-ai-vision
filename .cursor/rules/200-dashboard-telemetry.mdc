@@ -1,0 +1,126 @@
+---
+description: Binding telemetry, panel, and zero-GC rendering rules for the ROC AI Vision dashboard. Encodes synthesis spec v2 + amendments v3 (actuation/ESP/dual-use), v4 (trajectory tracer + JSONL export + live slider feedback + 500 Hz actuator channel), v5 (background-odometry forensic channel + Spectator Telemetry Matrix).
+globs: dashboard/**/*
+alwaysApply: false
+---
+# ROC AI Vision Dashboard — Binding Rules
+
+## Source of truth (read these first, in order)
+
+1. `workspace_blueprint/research_notes/dashboard_menu_architecture_2026.md` — the full binding synthesis (v2 §0–§10, v3 §11, v4 §12, v5 §13). Cite section numbers in code comments when making non-obvious decisions.
+2. `dashboard/architecture_plan.md` — the actionable Phase 5/6 plan derived from the synthesis. Read before refactoring or adding panels.
+3. `core/kinematics_engine/include/roc/kinematics/wire_format.hpp` — wire payload contract for version=1 track frames. **Production-locked. Never modify.**
+4. `workspace_blueprint/research_notes/research_ipc_middleware_2026.md` §8.2 — wire-format version dispatch table (v1 track / v2 actuator-telemetry / v3 bg-odometry).
+
+## Defensive-research framing (non-negotiable)
+
+The dashboard is a **defensive analytical instrument**. No exploitation tooling, no evasion patterns, no bypass guidance — in code, in comments, in panel labels, in JSONL export field names, or in research docs the dashboard generates. The forbidden-vocabulary CI lint forbids `aimbot_*`, `evade_*`, `bypass_*`, `humanise_*` (with offensive intent), `spoof_*`, `inject_*` in any path under `dashboard/`. Use sanitised vocabulary: `actuator_*`, `target_lock_*`, `clean_trace`, `dirty_trace`, `bg_odometry_*`.
+
+## Shell architecture (v2 §1)
+
+- **Three-zone shell**: TopBar (24 px) + DestinationsRail (left, 56 px) + WorkArea (everything else). Cardinality of destinations is **locked at 4**. Never add a 5th destination — extend via Blueprints / Scenarios / panel registry instead.
+- **Four destinations** (forward names → current code names, both names valid during Phase 5b transition):
+  - `Operate` → `Spatial Projection Canvas` — composite camera + EKF + actuator-trace canvas
+  - `Inspect` → `Observer Matrix` — featured workspace for MouseDynamicsInspector + SpectatorTelemetryMatrix + companion analytics panels
+  - `Calibrate` → `Kinematic Trajectory Controller` — slider-heavy parameter authoring with live tracer feedback
+  - `Engage` → `Hardware Actuation Interface` — sink selection, safety mode, REPLAY-mode hard-disable
+- **Dockable panels** within each destination via Blueprints (JSON-persisted to `localStorage`).
+- **Command palette** at `Ctrl+K` for fuzzy-searching actions + panels + tracks.
+- **Overlay sheet** at `Alt+Z` for compact mode.
+
+## Composite Operate canvas (v2 §3.1, v3 §11.1)
+
+Layer z-order in `TelemetryCanvas.svelte` / future `SpatialProjectionPanel.svelte`:
+
+```
+Layer 4 (top)    target-lock crosshair + slew indicator
+Layer 3          hierarchy edges (Gotham-style parent → child polylines)
+Layer 2          EKF overlay (detection boxes + uncertainty ellipses)
+Layer 1.5        Actuator Path History (raw / smoothed / both — v3 §11.1)
+Layer 1          EKF-predicted forward trajectory (per detection)
+Layer 0          <video> camera feed (base, toggleable by `v`)
+```
+
+## Data layer separation (do not cross — production-locked)
+
+- **Hot-path stores** (typed-array SoA, no Svelte reactivity touches the columns):
+  - `trackPool` (v1 track frames, 30 Hz, per-track, 64 slots × 16-sample trajectory ring)
+  - `actuatorPool` (v2 actuator-telemetry frames, 500 Hz @ Phase 5c / 60 Hz @ Phase 5b, GLOBAL ring of 4096 samples)
+  - `bgOdometryPool` (v3 bg-odometry frames, 30 Hz, GLOBAL ring of 1024 samples)
+- **Human-speed stores** (Svelte runes, full reactivity): `aiming_config`, `hardware_config`, `profile`, `scenario`, `blueprint`.
+- **Hot-path stores are NEVER imported by Destination panels** that compute on operator interaction speed. The canvas RAF tick polls typed arrays directly; reactive subscribers see only the `presenceVersion` / `framesSinceReset` rune bumps.
+- **Human-speed stores are NEVER read inside any RAF tick.** Slider changes mutate config stores → an `OperatorCommand` is sent to the C++ orchestrator → the next inbound wire frame reflects the change.
+
+## Wire-format version dispatch (locked schema)
+
+Every inbound binary frame is dispatched on byte 0:
+
+| Version byte | Frame type | Rate | Frame size | Pool |
+|---|---|---|---|---|
+| `0x01` | Track frame (v1) | 30 Hz | 12 B header + N × 86 B | `trackPool` |
+| `0x02` | Actuator telemetry (v2 — v3 §11.1 + v4 §12.4) | 60 Hz Phase 5b → 500 Hz Phase 5c | 36 B | `actuatorPool` |
+| `0x03` | Bg-odometry (v3 — v5 §13.4) | 30 Hz | 32 B | `bgOdometryPool` |
+
+Decoder MUST be zero-allocation byte-walker via `DataView` with explicit `littleEndian=true`. Unknown version bytes are dropped silently with a single dev-mode console warning per session.
+
+## Rate decoupling (v4 §12.4, v5 §13.4)
+
+- Vision inference: **30 Hz** (camera frame rate; v1 track + v3 bg frames pegged to this)
+- Actuator telemetry: **250–1000 Hz** (default 500 Hz @ Phase 5c, 60 Hz Phase 5b soft-launch)
+- Operator UI mutations: **human speed**, mutated via OperatorCommand reverse channel
+- Render loop: **`requestAnimationFrame`** (matches display refresh, 60/120/144/240 Hz)
+
+Each rate is **independent**. The actuator-telemetry stream never blocks on the track stream or vice versa; backpressure drops oldest samples at the SPSC boundary.
+
+## OperatorCommand reverse channel (v4 §12.3, v3 §11.3)
+
+Single 22-byte LE frame per command. New command kinds added in Phase 5c:
+
+| Kind | Numeric | Payload |
+|---|---|---|
+| `kNone` | 0 | — |
+| `kLockTarget` | 1 | `u64 target_track_id` |
+| `kReleaseLock` | 2 | — |
+| `kUpdateSelectorWeights` | 3 | `f32 weight_proximity, weight_confidence, weight_stability` |
+| `kSetSmoothingAlpha` | 4 (Phase 5c) | `f32 alpha` |
+| `kSetNisDeadbandScaling` | 5 (Phase 5c) | `f32 scale` |
+| `kSetFovRadius` | 6 (Phase 5c) | `f32 radius_px` |
+| `kSetTargetingAnchor` | 7 (Phase 5c) | `u8 anchor_enum` per v3 §11.3 |
+
+## Component boundaries
+
+- **`TelemetryCanvas.svelte`** (future `SpatialProjectionPanel.svelte`) — Hot-path only. Reads three pools, mutates pre-allocated SVG primitives in place. NEVER handles buttons, modals, or state mutations. `{#if}` unmounts halt the RAF loop.
+- **`MouseDynamicsInspector.svelte`** (Phase 5c) — Featured Inspect-destination panel per v4 §12.1. Side-by-side clean/dirty traces + derived feature mini-plots + record/export controls. Reads `actuatorPool`.
+- **`SpectatorTelemetryMatrix.svelte`** (Phase 5c) — Inspect-destination addition per v5 §13.5. Dual-line chart of actuator vs bg-odometry velocity + cross-correlation strip + KPI strip. Reads `actuatorPool` and `bgOdometryPool`.
+- **`NavigationShell.svelte`** — TopBar + DestinationsRail + WorkArea. `{#if}` blocks per destination; unmounts unmount their hot-path consumers.
+- **Domain config panels** (`domains/*`) — human-speed `aiming_config`, `hardware_config`, `profile`, `scenario`. Never coupled to RAF or binary frame parsing.
+
+## REPLAY-mode safety lock (v3 §11.4)
+
+When the active Profile's `output_sink.kind === 'replay'`:
+
+- All `OperatorCommand` writes that would emit to a real sink are gated to false at the dashboard level (defence in depth — the C++ orchestrator's REPLAY-mode hard-disable is the primary lock).
+- The TopBar shows a high-contrast `⚠ REPLAY MODE` banner.
+- The Engage destination's "Engage" button is disabled with explanatory tooltip.
+
+## Tech stack (locked)
+
+- **Framework**: SvelteKit 2.x + Svelte 5 runes (compiled, no virtual DOM).
+- **State**: `$state` runes for reactive surfaces; typed arrays for hot-path data; `localStorage` JSON for persisted Blueprints/Profiles/Scenarios.
+- **SSR**: **disabled** for the dashboard (`+layout.ts` sets `ssr = false`). The dashboard is a local-only operator console.
+- **Transport**: native `WebSocket` to `ws://127.0.0.1:8765` (C++ IXWebSocket egress). `binaryType = 'arraybuffer'`.
+- **Charts/canvas**: native `<svg>` for tracks/bboxes/trajectory; `<canvas>` permissible only for time-series plots in MouseDynamicsInspector / SpectatorTelemetryMatrix (where per-pixel SVG would blow the budget at 30+ Hz refresh).
+
+## Render optimisations (locked)
+
+- Reuse buffers. Reuse `DataView`s. Reuse SVG elements via `bind:this[]` arrays. Pre-allocate every scratch array at module scope.
+- No `JSON.parse` / `JSON.stringify` / `new Map` / `new Set` / `.map()` / `.filter()` / `.forEach()` / `.reduce()` inside RAF or wire-decode paths. Use indexed `for` loops.
+- All `DataView` numeric reads pass `true` for `littleEndian` explicitly. A silent omission is a silent corruption.
+
+## Naming conventions
+
+- `kebab-case` for directory structures and SvelteKit routing paths.
+- `PascalCase` for Svelte component filenames.
+- `camelCase` for TypeScript symbols.
+- `SCREAMING_SNAKE_CASE` for wire-format constants and flag bits.
+- `.svelte.ts` extension for any TypeScript module that uses `$state` / `$derived` / `$effect` runes — Svelte's compiler only processes runes in this extension or in `.svelte` files.

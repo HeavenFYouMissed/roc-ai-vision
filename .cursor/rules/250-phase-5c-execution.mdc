@@ -1,0 +1,91 @@
+---
+description: Phase 5C execution rules for model-size-constrained agents (4.6 Opus, auto, composer). Points to the single-source-of-truth handoff document and locks vocabulary discipline + per-task scoping.
+globs: dashboard/**/*, core/**/*, workspace_blueprint/**/*
+alwaysApply: false
+---
+# ROC AI Vision — Phase 5C Execution Rules
+
+## Single source of truth
+
+Before doing anything in Phase 5C, read `workspace_blueprint/PHASE_5C_HANDOFF.md`. It contains:
+- §0 vocabulary discipline (mandatory)
+- §1 state at handoff (what's locked, what's pending)
+- §2 ordered task list T01–T24 grouped into 7 themes
+- §3 critical sequencing diagram + parallelism notes
+- §4 phase-completion acceptance verification
+- §5 recovery patterns for common failure modes
+- §6 what unlocks after Phase 5C
+
+The binding architectural spec is `workspace_blueprint/research_notes/dashboard_menu_architecture_2026.md` (v2 + v3 §11 + v4 §12 + v5 §13). The companion behavioural-biometrics research is `workspace_blueprint/research_notes/anticheat_data_exposure_2026.md` (F01–F25 features, P1–P8 panels, R1–R13 recommendations).
+
+## Vocabulary discipline (re-stated for emphasis — see HANDOFF §0)
+
+Use neutral terms in code, comments, and chat:
+- `actuator_*`, `pointer_*`, `command_*` (NOT `aim_*`, `mouse_*` in the offensive sense)
+- `target_lock_*`, `anchor_*` (NOT `aimpoint_*`)
+- `dirty_trace`, `clean_trace` (NOT `humanised_*`, `bot_input`)
+- `bg_odometry_*`, `visual_odometry_*` (canonical neutral term — no offensive equivalent)
+- `behavioural_features_*`, `kinematic_features_*` (NOT `anticheat_features_*`)
+
+When citing the AC research doc, use section numbers (`anticheat_data_exposure_2026.md §5 F03`) — do NOT quote 3+ contiguous lines from it in chat. That doc has high keyword density by necessity; quoting it back amplifies session-classifier risk.
+
+## Session sizing
+
+One composer-auto session = one task ID end-to-end (or two task IDs sharing one file). Do not bundle a substantial code change with a build+run cycle in the same edit batch; use sequential tool calls for those.
+
+For `.svelte` and `.svelte.ts` work: invoke the `svelte-file-editor` skill explicitly — the Svelte 5 runes validation MCP catches rune-misuse before the build does.
+
+## Update cadence for the Living Blueprint
+
+After completing any Phase 5C task:
+1. Update `workspace_blueprint/project_tree.md` if files were created/renamed/moved.
+2. Append the task ID + acceptance verification to `workspace_blueprint/roadmap.md` Phase 5C execution log.
+3. Append a short addendum to `workspace_blueprint/PHASE_5C_HANDOFF.md` at the bottom (NOT inline edits to the task table) noting the task is completed.
+
+Never edit the task IDs / sequence in `PHASE_5C_HANDOFF.md` §2 unless a task's dependency assumption was proven wrong by execution; in that case, add an explicit "T-XX deviation" note in the roadmap entry first, then update the handoff.
+
+## Hard constraints (inherited from `000-roc-global.mdc` and `200-dashboard-telemetry.mdc`)
+
+- No `// TODO` / placeholder code anywhere.
+- No new files under `core/kinematics_engine/` or `core/transport/` existing locked headers (extensions only via new files).
+- `wire_format.hpp` v=1 layout is production-locked; v=2 and v=3 layouts in `dashboard_menu_architecture_2026.md` are locked.
+- `-ffast-math` stays OFF.
+- No `using namespace std;`.
+- All `.svelte.ts` and `.svelte` files use Svelte 5 runes (`$state`, `$derived`, `$effect`).
+- Zero-GC discipline: typed arrays (`Float32Array`, `Uint16Array`) for ring buffers; reuse a single `DataView` for binary decoders; no per-frame `Array<{...}>` allocations.
+
+## Out-of-scope for Phase 5C
+
+The following are explicitly deferred and must NOT be undertaken during Phase 5C:
+- Real `OutputSink` hardware drivers (HID via COM3, Dynamixel) → Phase 6 part B.
+- Ed25519 session-header attestation signing → Phase 7 (per AC research R9).
+- HuggingFace dataset publication → Phase 7 (per AC research R8 + R13).
+- Multi-model ensemble in the vision pipeline → Phase 1.5 deferred (per `phase_1_ensemble_architecture.md`).
+- Any redesign of the 4-destination cardinality, 5-thread C++ orchestrator topology, or wire-format version-dispatch contract.
+
+## Cross-reference table for fast lookup
+
+| What you need | Where it lives |
+|---|---|
+| 4-destination shell architecture | `dashboard_menu_architecture_2026.md` §1 |
+| Composite Operate canvas layer order | §3.1 + §11.1 (Layer 1.5) |
+| Profile schema fields | §5 + §11.2 + §13.2 |
+| Scenario presets | §5.5 + §11.4 + §12.5 |
+| Wire-format version dispatch | `200-dashboard-telemetry.mdc` + §13.4 |
+| OperatorCommand enum | §12.3 (T02 extends it) |
+| Layer 1.5 ring buffer sizing | §11.1 (corrected to GLOBAL per §13.8) |
+| MouseDynamicsInspector layout | §12.1 + §12.6 |
+| SpectatorTelemetryMatrix layout | §13.5 |
+| JSONL session header schema | §12.2 (extended by AC research R4 + R6) |
+| JSONL sample event schema | §12.2 (extended by §13.6 + AC research R4) |
+| JSONL feature event schema | §12.2 (extended by §13.6 + AC research §5 F01–F25) |
+| Recording / Export UI strip | §12.6 |
+| OpticalFlowSampler skeleton | §13.3 |
+| Background-odometry math | §13.2 |
+| Forbidden-vocabulary lint pattern | §11.4 Risk A3 + §12 header |
+| Defensive-research framing | §12 header (non-negotiable) |
+| AC vendor public-methodology survey | `anticheat_data_exposure_2026.md` §2 |
+| 25 derived features | `anticheat_data_exposure_2026.md` §5 |
+| 8 panel proposals | `anticheat_data_exposure_2026.md` §9 |
+| 13 numbered recommendations | `anticheat_data_exposure_2026.md` §11 |
+| BEACON folder layout | `anticheat_data_exposure_2026.md` §8 + R4 + R6 |

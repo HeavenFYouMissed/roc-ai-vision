@@ -1,0 +1,78 @@
+---
+description: Binding overlay-alignment rule for any Svelte component that draws SVG or canvas on top of <img>/<video>. Enforces the aspect-ratio stage-div pattern, source-pixel coordinate discipline, geometry caps, and non-scaling strokes. Prevents overlay spillover into letterbox gutters and source-pixel misalignment between raster and overlay.
+globs: dashboard/**/*.svelte
+alwaysApply: true
+---
+# Overlay Stage Alignment — Binding Pattern
+
+## Source of truth
+
+1. `workspace_blueprint/research_notes/research_svg_overlay_alignment_2026.md` — canonical pattern research, surveys CVAT / Foxglove / Label Studio / Roboflow InferenceJS / Sunone, rejects JS `getBoundingClientRect` measurement on layout-tax + one-frame-lag grounds.
+2. `workspace_blueprint/UI_SPEC_SHEET.md` §14 — distilled rule set + canonical CSS snippet + migration checklist.
+3. `dashboard/src/lib/components/destinations/OperateCanvas.svelte` — reference implementation. Copy its `.canvas-stage` markup + CSS verbatim into any new overlay component.
+
+## Hard rules (non-negotiable)
+
+### Rule 1 — Stage-div mandatory for raster + overlay composites
+
+Any Svelte component under `dashboard/**` that overlays `<svg>` or `<canvas>` on top of `<img>` or `<video>` MUST wrap both in a `.canvas-stage` div with:
+
+- `position: relative`
+- `max-width: 100%`
+- `max-height: 100%`
+- `overflow: hidden`
+- inline `style="aspect-ratio: {VIEW_W} / {VIEW_H};"` (reactive — pulled from `sourceStore.active.{width,height}` or the equivalent source-of-truth for that component)
+
+The parent container of `.canvas-stage` MUST use `display: grid; place-items: center` with `overflow: hidden` and `min-width: 0; min-height: 0`, so the stage collapses to the largest source-AR-shaped box that fits.
+
+### Rule 2 — Source-pixel coordinate space
+
+The overlay `<svg>` MUST declare:
+
+- `viewBox="0 0 {VIEW_W} {VIEW_H}"` where `VIEW_W × VIEW_H` is the source pixel resolution (e.g. 640×480 for a USB webcam, 1920×1080 for HDMI capture).
+- `preserveAspectRatio="xMidYMid meet"`.
+
+All overlay user coordinates MUST be in source pixels (NOT normalised, NOT CSS pixels). Detector outputs at `(u=629, v=240)` in a 640×480 source land at exactly the rendered pixel `(629, 240)` after the stage's transform — no client-side projection math required.
+
+### Rule 3 — Raster fills the stage
+
+The raster `<img>` / `<video>` MUST use `object-fit: fill`. The stage already enforces source AR, so `contain` would re-letterbox INSIDE the stage and break 1:1 pixel mapping. Use `position: absolute; inset: 0; width: 100%; height: 100%; display: block;`.
+
+### Rule 4 — Geometry bounds discipline
+
+Overlay user coords MUST stay within `[0, VIEW_W] × [0, VIEW_H]`. Geometry that legitimately needs to exceed (FOV halos, range rings, off-screen indicators, lock crosshairs that extend past bbox bounds) MUST be guarded by EITHER:
+
+- A radius cap at `Math.min(VIEW_W, VIEW_H) * 0.5` (or tighter, e.g. `0.48` for visual breathing room), OR
+- An explicit `<clipPath>` referenced via `clip-path="url(#stage-clip)"`.
+
+The stage's `overflow: hidden` is the primary clip guard. The cap / `<clipPath>` is a belt-and-suspenders secondary guard for the case where a future refactor accidentally drops the stage clip — visible spillover is a regression that the cap catches at draw time.
+
+### Rule 5 — Non-scaling strokes mandatory
+
+Every stroked overlay primitive (`<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<path>`, `<polyline>`) MUST carry `vector-effect="non-scaling-stroke"`.
+
+Without this, stroke widths scale with the SVG transform — a 2 px bbox stroke on a 480p source becomes a hairline (~0.5 px) on a 4 K display, and a 2 px stroke on a 4 K source becomes an 8 px slab on a low-res viewport. Non-scaling strokes keep stroke width in CSS pixels regardless of source resolution or display zoom, which is what every annotation UI wants.
+
+### Rule 6 — OS chrome stays outside the stage
+
+Status bars, banners, floating toolbars, modals, click-to-lock indicators, REPLAY-mode warnings, and similar OS-chrome elements MUST live OUTSIDE the `.canvas-stage`, as siblings at the panel-root level. These elements legitimately overlap the dark gutter area and should not be clipped to the source rect.
+
+Examples that go OUTSIDE the stage: `.canvas-status-bar`, `.ctl-mode-banner`, `.replay-mode-banner`, `LayerVisibilityToolbar`, `ModelCard`, `ObjectCountBadge`, `TargetLockModal` backdrop.
+
+Examples that go INSIDE the stage: `<img class="layer-0-video">`, fallback `.grid-bg`, `<svg class="layer-svg">`, and any chip/label that is conceptually part of the video surface (e.g. `.awaiting-chip` displayed bottom-center over the video area).
+
+## Anti-patterns (reject on review)
+
+- Using `getBoundingClientRect()` + `ResizeObserver` + state writes to size the SVG to match the rendered image rect. This adds a layout-read tax, creates a one-frame lag where the overlay is the wrong size, and forces a render-sync path between layout and reactive state. The stage-div pattern is zero-JS and strictly superior.
+- Setting `object-fit: contain` on the raster INSIDE a stage. The stage already enforces AR; `contain` would re-letterbox inside the stage and break 1:1 pixel mapping at the rendered boundary.
+- Reading `naturalWidth` / `naturalHeight` from a MJPEG `<img>` on first `onload` to set the stage AR. MJPEG `<img>.onload` only fires on the initial connection in Chromium, not per frame, but the natural size CAN race with frame replacement; pull source dimensions from the camera config store (`sourceStore.active`) instead.
+- Computing source-pixel-to-CSS-pixel conversions in JavaScript for overlay placement. The SVG `viewBox` transform handles all scaling for free.
+- Drawing overlay geometry at user coords > `VIEW_W` or > `VIEW_H` without a cap or clipPath, even if the stage's `overflow: hidden` would clip it. Defense in depth — the cap also documents intent.
+- Adding `display: flex; align-items: center` to a stage parent. Flex defaults `min-width: auto` which breaks `max-width: 100%` shrink behaviour; use `display: grid; place-items: center` with explicit `min-width: 0; min-height: 0` instead.
+
+## References
+
+- `workspace_blueprint/research_notes/research_svg_overlay_alignment_2026.md`
+- `workspace_blueprint/UI_SPEC_SHEET.md` §14
+- `c:\Users\heave\.cursor\plans\overlay_stage_alignment_fix_24a14106.plan.md` (originating plan, 2026-05-18)
+- Reference implementation: `dashboard/src/lib/components/destinations/OperateCanvas.svelte`

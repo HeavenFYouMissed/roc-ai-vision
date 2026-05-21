@@ -1,0 +1,48 @@
+# Reference manifest for the production 6-class humanoid model.
+# The .onnx itself is NOT distributed with this repo — custom training is
+# required.  This file exists so the manifest-loader tests have a real
+# schema example, AND so the engine fails fast with a useful error when
+# the .onnx is missing.
+
+schema_version: 1
+
+name:        yolo26m-roc-humanoid
+purpose:     detection
+trained_on:  CrowdHuman+COCO-WB+PPE
+notes:       Custom-trained for ROC AI Vision 6-class humanoid hierarchy.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 640, 640]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.0, 0.0, 0.0]
+    std:            [1.0, 1.0, 1.0]
+  preprocessing:
+    letterbox:      true
+    pad_value:      [114, 114, 114]
+    pad_to:         model_input
+
+output:
+  head:             yolo26_detect
+  format:           cxcywh_logits
+  expected_shape:   [1, 10, 8400]
+  num_classes:      6
+  nms_in_graph:     false
+  thresholds:
+    score:          0.25
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  cache_compiled:   true
+
+classes:
+  - {id: 0, name: person,        roc_label: Person}
+  - {id: 1, name: head,          roc_label: Head}
+  - {id: 2, name: upper_torso,   roc_label: UpperTorso}
+  - {id: 3, name: hat,           roc_label: AccessoryHat}
+  - {id: 4, name: vest,          roc_label: AccessoryHat}
+  - {id: 5, name: backpack,      roc_label: AccessoryBackpack}

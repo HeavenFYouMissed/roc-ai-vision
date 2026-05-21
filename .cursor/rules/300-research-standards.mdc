@@ -1,0 +1,39 @@
+---
+description: Formatting and content standards for research documents in workspace_blueprint/research_notes/.
+globs: workspace_blueprint/research_notes/**/*.md
+alwaysApply: false
+---
+# Research Document Standards
+
+## Required Sections
+
+Every research markdown file must contain:
+1. **Title + metadata block** — Date, Focus, Scope at the top.
+2. **Benchmark table** — no qualitative-only claims; include latency (ms), memory (KB/MB), throughput (fps), accuracy with hardware context.
+3. **Risk analysis table** — Risk / Severity / Mitigation columns.
+4. **Actionable recommendations** — numbered, specific, with justification against project constraints.
+5. **References** — author, title, URL, date accessed for every external source.
+
+## Constraint Gate
+
+Evaluate every finding against: <33 ms latency budget, Windows x64, CUDA 12.x / RTX 4090, C++17/20, zero hot-path heap allocation, double-precision filter math. Document any violation explicitly.
+
+## Formatting Rules
+
+- Use `§N.M` cross-references when citing existing blueprint sections.
+- Embed LaTeX math with `$...$` (inline) and `$$...$$` (block) — keep Eigen notation consistent with `phase_2_ekf_kinematics.md`.
+- Tables use standard markdown pipe syntax with header row.
+- Code blocks specify the language tag (`cpp`, `python`, `typescript`).
+
+## Anti-Patterns
+
+- No placeholder text: "TBD", "TODO", "implement later".
+- No vague recommendations: "consider using X" without benchmarks or rationale.
+- No claims without sources or measured numbers.
+
+## Post-Write Checklist
+
+After writing or editing a research file:
+1. Update `workspace_blueprint/roadmap.md` execution log.
+2. Update `workspace_blueprint/project_tree.md` if files changed.
+3. Cross-reference any affected existing blueprints.

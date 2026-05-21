@@ -1,0 +1,66 @@
+# =============================================================================
+# person-only-yolov8.yaml
+#
+# Reference manifest §3.3 of phase_1_universal_ep_and_manifest.md.
+#
+# Target model (auto-selected from C:/Users/heave/Desktop/onnx_collection/):
+#   1.5kR6.onnx
+#     (12,238,185 bytes — alphabetically-first member of the 82% subset of
+#      the user's 113-file collection that exports as
+#      `[1, 3, 640, 640]` → `[1, 5, 8400]` — i.e. single-class detectors
+#      with 4 bbox + 1 fused score per anchor.)
+#
+# These single-class videogame-trained detectors detect "humanoid body
+# silhouette" — they were trained on game character renderings but the
+# silhouette signal generalises moderately well to real humans for a
+# bring-up demo.  Production deployments will retrain on CrowdHuman or
+# similar real-world data.
+#
+# Output shape `[1, 5, 8400]` = 4 bbox + 1 single-class probability.  The
+# `yolov8_detect` postprocessor's argmax path degenerates to "class 0" —
+# matched in the class mapping below.
+# =============================================================================
+
+schema_version: 1
+
+name:        person-only-yolov8
+purpose:     detection
+trained_on:  Game-character renderings (Rainbow Six Siege, 1.5k dataset)
+notes: >
+  Phase 6 part A demo manifest for any 1×5×8400 single-class detector in
+  the user's onnx_collection. Treats class 0 as `Person` since these
+  detectors target humanoid silhouettes regardless of game-specific
+  costume. Lower score threshold (0.20) than the 80-class COCO manifest
+  because single-class confidences are typically higher-variance.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 640, 640]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.0, 0.0, 0.0]
+    std:            [1.0, 1.0, 1.0]
+  preprocessing:
+    letterbox:      true
+    pad_value:      [114, 114, 114]
+    pad_to:         model_input
+
+output:
+  head:             yolov8_detect
+  format:           cxcywh_sigmoid
+  expected_shape:   [1, 5, 8400]
+  num_classes:      1
+  nms_in_graph:     false
+  thresholds:
+    score:          0.20
+    iou:            0.45
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  cache_compiled:   true
+
+classes:
+  - {id: 0, name: humanoid_body, roc_label: Person}

@@ -1,0 +1,71 @@
+Cursor you are tracking Humanoid Entities for Intelligent Surveillance and Autonomous Crowdflow Monitoring.person (The Parent Entity): The global bounding box tracking the entire human structure.
+
+head / face (The Primary Anchor): Used for facial re-identification or orientation tracking (e.g., determining if a person is looking toward a camera).
+
+upper_torso (The Stable Center): The chest and shoulders. In robotics, this is the most stable tracking point because it doesn't move as erratically as limbs.
+
+accessories (hat, vest, backpack): Sub-features used for appearance embeddings (DeepSORT) to maintain persistent ID tracking when people cross paths or step behind obstacles.
+
+the system is designed to track a person's head, upper_torso, and accessories in a surveillance feed
+
+Computer Vision & Robotics Goal: The system calculates the physical center of mass of the upper_torso to track smooth path trajectories, while using the head coordinates for precision monitoring or pointing directional sensors.
+
+map the actuator deltas required to lock onto a moving head versus a moving upper_torso Forensics Goal, pristine, multi-layered SVG data paths/ analyze whether a system is smoothly tracking a global entity or mechanically snapping its focus between sub-features
+ 
+// We are building a multi-object kinematic selection matrix for a tracking pipeline.
+// Given a vector of tracked objects—where each object has a unique ID, a tracking state 
+// (Position, Velocity via an EKF), and a label (e.g., 'Head', 'Torso')—write a C++ 
+// TargetSelector class.
+//
+// The class must:
+// 1. Ingest the array of active tracked targets.
+// 2. Identify and group sub-features belonging to the same entity using relative spatial distance.
+// 3. Implement a selection function that chooses the optimal target based on custom weights 
+//    (e.g., proximity to a screen-center reference point [cx, cy]).
+// 4. Output a single, smoothed translation vector (dx, dy) representing the relative 
+//    movement required to align the reference point with the chosen target's predicted state.
+//
+// Keep it in modern, clean C++17, fully decoupled from any specific gaming or hardware wrappers.
+
+Automation & Defensive Robotics Goal: demonstrating cutting-edge Multi-Object Tracking (MOT). You can plug a serial robotic arm into the backend, click on ID_03 on SvelteKit screen, and the actuator node will instantly calculate the predictive intercept path to point physical hardware at the specific target in the real world.
+
+industrial security system, defensive drone logic, or a behavioral analysis labMulti-Target Interception Dashboard
+
+prompt: 
+// We are building a multi-object kinematic selection and tracking matrix 
+// for an intelligent surveillance and robotic vision pipeline.
+//
+// The system ingests an array of detected features belonging to humanoid targets 
+// with labels such as 'person', 'head', 'upper_torso', and 'accessories'.
+//
+// Write a C++ TargetSelector class that:
+// 1. Ingests the active feature detections.
+// 2. Associates sub-features ('head', 'upper_torso') to their parent 'person' entity 
+//    based on spatial proximity and overlapping bounding boxes.
+// 3. Implements a selection matrix to lock onto a single primary entity based on 
+//    configurable priority weights (e.g., proximity to a screen-center tracking reference point).
+// 4. Calculates a smooth translation vector (dx, dy) to align the tracking reference 
+//    point with the chosen entity's predicted kinematic state.
+//
+// Utilize modern C++17 principles, prioritizing memory efficiency and low-latency matrix calculations.
+ONNX Runtime engine to be completely dynamic and able to read any ONNX model
+the Model Dictate the DimensionsInstead of telling the model what size image you are giving it, your C++ engine should interrogate the ONNX file at boot.ONNX Runtime has a built-in metadata API. When your ROS 2 vision node loads the .onnx file, the very first thing it should do is query the input layer for its expected shape vector, which looks like this:$$\text{Shape} = [\text{Batch}, \text{Channels}, \text{Height}, \text{Width}]$$For example, a standard vision model will return $[1, 3, 640, 640]$ or $[1, 3, 1080, 1920]$. Your C++ code catches those integers dynamically and automatically configures your OpenCV preprocessing pipeline to match them.
+ use Letterboxing (scaling the image while maintaining the original aspect ratio and padding the dead space with gray pixels).The Calculation LogicTo scale an arbitrary capture frame ($\text{src}$) to match an arbitrary ONNX input shape ($\text{dst}$), you calculate the scale factor ($s$):$$s = \min\left(\frac{\text{dst}_{w}}{\text{src}_{w}}, \frac{\text{dst}_{h}}{\text{src}_{h}}\right)$$You resize the original frame by $s$, and then pad the remaining width or height with flat color values (typically 114, 114, 114 for vision models) to fill out the exact required dimensions.
+// We are building a generic, dynamic ONNX Inference Wrapper in modern C++17 
+// for our ROS 2 vision pipeline. 
+// 
+// The system must be capable of loading any pre-trained vision model without 
+// hardcoded layer dimensions.
+//
+// Implement an InferenceEngine class that:
+// 1. Accepts a path to an ONNX file and initializes an Ort::Session.
+// 2. Programmatically queries the model's metadata to extract the exact string 
+//    names and data types of all Input and Output nodes.
+// 3. Queries the Input node's structural shape array to dynamically determine 
+//    the expected Batch Size, Channels, Height, and Width.
+// 4. Provides a Preprocess utility using OpenCV to scale incoming frames to the 
+//    model's discovered input dimensions via letterboxing (maintaining aspect ratio).
+// 5. Normalizes the pixel buffer (e.g., converting 0-255 bytes to 0.0-1.0 floating points) 
+//    and executes the session, returning the raw output tensors dynamically.
+//
+// Ensure zero memory leaks, utilizing RAII wrapper types provided by the native <onnxruntime_cxx_api.h>.

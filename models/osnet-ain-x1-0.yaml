@@ -1,0 +1,33 @@
+# Reference manifest for the OSNet-AIN x1.0 re-id extractor.
+schema_version: 1
+
+name:        osnet-ain-x1-0
+purpose:     reid
+trained_on:  MSMT17+Market1501+CUHK03 (multi-source)
+notes:       128-D L2-normalised appearance embedding for DeepSORT.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 256, 128]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.485, 0.456, 0.406]
+    std:            [0.229, 0.224, 0.225]
+  preprocessing:
+    letterbox:      false
+    pad_value:      []
+    pad_to:         none
+
+output:
+  head:             osnet_reid
+  format:           reid_embedding
+  expected_shape:   [1, 128, -1]
+  num_classes:      0
+  nms_in_graph:     false
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  batchable:        true

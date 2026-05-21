@@ -1,0 +1,124 @@
+# Reference manifest for the YOLO26n COCO-pretrained model used by the
+# vision_pipeline integration tests.  Per §3.3 of
+# `phase_1_universal_ep_and_manifest.md`.
+#
+# NOTE: this ONNX file is the NMS-in-graph end-to-end variant (shape
+# [1, 300, 6]), decoded by the `post_nms` postprocessor.  No external
+# NMS, sigmoid, or letterbox inversion needed — all handled in-graph.
+
+schema_version: 1
+
+name:        yolo26n-coco
+purpose:     detection
+trained_on:  COCO 2017
+notes:       Bring-up / smoke test — post-NMS end-to-end model.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 640, 640]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.0, 0.0, 0.0]
+    std:            [1.0, 1.0, 1.0]
+  preprocessing:
+    letterbox:      true
+    pad_value:      [114, 114, 114]
+    pad_to:         model_input
+
+output:
+  head:             post_nms
+  format:           xyxy_conf_cls
+  expected_shape:   [1, 300, 6]
+  num_classes:      80
+  nms_in_graph:     true
+  thresholds:
+    score:          0.25
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  cache_compiled:   true
+
+classes:
+  - {id:   0, name: person,         roc_label: Person}
+  - {id:   1, name: bicycle,        roc_label: Unknown}
+  - {id:   2, name: car,            roc_label: Unknown}
+  - {id:   3, name: motorcycle,     roc_label: Unknown}
+  - {id:   4, name: airplane,       roc_label: Unknown}
+  - {id:   5, name: bus,            roc_label: Unknown}
+  - {id:   6, name: train,          roc_label: Unknown}
+  - {id:   7, name: truck,          roc_label: Unknown}
+  - {id:   8, name: boat,           roc_label: Unknown}
+  - {id:   9, name: traffic_light,  roc_label: Unknown}
+  - {id:  10, name: fire_hydrant,   roc_label: Unknown}
+  - {id:  11, name: stop_sign,      roc_label: Unknown}
+  - {id:  12, name: parking_meter,  roc_label: Unknown}
+  - {id:  13, name: bench,          roc_label: Unknown}
+  - {id:  14, name: bird,           roc_label: Unknown}
+  - {id:  15, name: cat,            roc_label: Unknown}
+  - {id:  16, name: dog,            roc_label: Unknown}
+  - {id:  17, name: horse,          roc_label: Unknown}
+  - {id:  18, name: sheep,          roc_label: Unknown}
+  - {id:  19, name: cow,            roc_label: Unknown}
+  - {id:  20, name: elephant,       roc_label: Unknown}
+  - {id:  21, name: bear,           roc_label: Unknown}
+  - {id:  22, name: zebra,          roc_label: Unknown}
+  - {id:  23, name: giraffe,        roc_label: Unknown}
+  - {id:  24, name: backpack,       roc_label: AccessoryBackpack}
+  - {id:  25, name: umbrella,       roc_label: Unknown}
+  - {id:  26, name: handbag,        roc_label: AccessoryBackpack}
+  - {id:  27, name: tie,            roc_label: Unknown}
+  - {id:  28, name: suitcase,       roc_label: Unknown}
+  - {id:  29, name: frisbee,        roc_label: Unknown}
+  - {id:  30, name: skis,           roc_label: Unknown}
+  - {id:  31, name: snowboard,      roc_label: Unknown}
+  - {id:  32, name: sports_ball,    roc_label: Unknown}
+  - {id:  33, name: kite,           roc_label: Unknown}
+  - {id:  34, name: baseball_bat,   roc_label: Unknown}
+  - {id:  35, name: baseball_glove, roc_label: Unknown}
+  - {id:  36, name: skateboard,     roc_label: Unknown}
+  - {id:  37, name: surfboard,      roc_label: Unknown}
+  - {id:  38, name: tennis_racket,  roc_label: Unknown}
+  - {id:  39, name: bottle,         roc_label: Unknown}
+  - {id:  40, name: wine_glass,     roc_label: Unknown}
+  - {id:  41, name: cup,            roc_label: Unknown}
+  - {id:  42, name: fork,           roc_label: Unknown}
+  - {id:  43, name: knife,          roc_label: Unknown}
+  - {id:  44, name: spoon,          roc_label: Unknown}
+  - {id:  45, name: bowl,           roc_label: Unknown}
+  - {id:  46, name: banana,         roc_label: Unknown}
+  - {id:  47, name: apple,          roc_label: Unknown}
+  - {id:  48, name: sandwich,       roc_label: Unknown}
+  - {id:  49, name: orange,         roc_label: Unknown}
+  - {id:  50, name: broccoli,       roc_label: Unknown}
+  - {id:  51, name: carrot,         roc_label: Unknown}
+  - {id:  52, name: hot_dog,        roc_label: Unknown}
+  - {id:  53, name: pizza,          roc_label: Unknown}
+  - {id:  54, name: donut,          roc_label: Unknown}
+  - {id:  55, name: cake,           roc_label: Unknown}
+  - {id:  56, name: chair,          roc_label: Unknown}
+  - {id:  57, name: couch,          roc_label: Unknown}
+  - {id:  58, name: potted_plant,   roc_label: Unknown}
+  - {id:  59, name: bed,            roc_label: Unknown}
+  - {id:  60, name: dining_table,   roc_label: Unknown}
+  - {id:  61, name: toilet,         roc_label: Unknown}
+  - {id:  62, name: tv,             roc_label: Unknown}
+  - {id:  63, name: laptop,         roc_label: Unknown}
+  - {id:  64, name: mouse,          roc_label: Unknown}
+  - {id:  65, name: remote,         roc_label: Unknown}
+  - {id:  66, name: keyboard,       roc_label: Unknown}
+  - {id:  67, name: cell_phone,     roc_label: Unknown}
+  - {id:  68, name: microwave,      roc_label: Unknown}
+  - {id:  69, name: oven,           roc_label: Unknown}
+  - {id:  70, name: toaster,        roc_label: Unknown}
+  - {id:  71, name: sink,           roc_label: Unknown}
+  - {id:  72, name: refrigerator,   roc_label: Unknown}
+  - {id:  73, name: book,           roc_label: Unknown}
+  - {id:  74, name: clock,          roc_label: Unknown}
+  - {id:  75, name: vase,           roc_label: Unknown}
+  - {id:  76, name: scissors,       roc_label: Unknown}
+  - {id:  77, name: teddy_bear,     roc_label: Unknown}
+  - {id:  78, name: hair_drier,     roc_label: Unknown}
+  - {id:  79, name: toothbrush,     roc_label: Unknown}

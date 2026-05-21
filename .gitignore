@@ -1,0 +1,131 @@
+# =============================================================================
+# ROC AI Vision — .gitignore
+# =============================================================================
+# Strategy: ship SOURCE only. Everything large / reproducible / generated /
+# vendor-binary stays out. The README + docs/build_directml.md document how
+# to re-fetch the redistributables on a fresh clone.
+# =============================================================================
+
+# -------------------- Build artefacts ---------------------------------------
+# CMake produces a `build/` (or `build_*/`) tree per sub-project. All
+# regenerable from source via `cmake -S . -B build`.
+build/
+build_*/
+out/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/install_manifest.txt
+**/compile_commands.json
+**/*.ninja
+**/.ninja_*
+
+# Compiled binaries + libraries
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.exp
+*.ilk
+*.so
+*.so.*
+*.dylib
+
+# -------------------- Third-party redistributables --------------------------
+# DirectML NuGet (~193 MB) + ORT-DML NuGet (~15 MB) + extracted DLLs +
+# repackaged ort_dml_root. All re-downloadable via the steps in
+# `docs/build_directml.md`. Single file limit on GitHub is 100 MB; the
+# DirectML NuGet zip alone breaks that.
+third_party/
+
+# -------------------- ML model weights --------------------------------------
+# .onnx files are big (10–45 MB each) and often derivative works of
+# upstream models with their own licenses. We ship the .yaml manifests
+# (kilobytes) so the dashboard can render the *structure* of the model
+# zoo, but the weights themselves must be sourced separately by the
+# operator. See `scripts/scan_onnx_to_manifest.py` for bulk generation.
+models/*.onnx
+**/*.onnx
+
+# (manifests intentionally kept — they're plaintext YAML)
+
+# -------------------- Node / SvelteKit --------------------------------------
+dashboard/node_modules/
+dashboard/.svelte-kit/
+dashboard/build/
+dashboard/.output/
+dashboard/dist/
+dashboard/coverage/
+**/node_modules/
+
+# Vite / Svelte stat caches
+**/.vite/
+**/.vinxi/
+
+# npm / pnpm / yarn lockfiles for sub-projects are kept; debug logs are not.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -------------------- Python tooling ----------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# -------------------- IDE / editor / OS -------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Cursor-specific noise (settings / chat scratch). The .cursor/rules/ tree
+# IS source-controlled because it encodes binding rules; nothing else is.
+.cursor/cache/
+.cursor/logs/
+
+# -------------------- Test + log outputs ------------------------------------
+test_logs/
+*.log
+*.tmp
+*.bak
+*.orig
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+coverage/
+htmlcov/
+
+# -------------------- Generated screenshots / assets ------------------------
+# The assets/ folder contains user-pasted screenshots from chat sessions —
+# not part of the source tree.
+assets/
+
+# -------------------- Local secrets -----------------------------------------
+*.pem
+*.key
+*.pfx
+*credentials*
+*.secret
+
+# -------------------- Misc orchestrator runtime spew ------------------------
+core/*.dll
+core/*.exe
+core/*.pdb
