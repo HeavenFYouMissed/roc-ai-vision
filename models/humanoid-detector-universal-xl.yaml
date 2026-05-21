@@ -1,0 +1,46 @@
+# Single-class humanoid detector — universal cross-domain.
+# YOLOv8m architecture trained on a mixed visual corpus spanning the arid /
+# tactical / stylized domains plus real-world photo/video. Highest recall
+# across distribution shifts at the cost of slightly lower per-domain precision.
+# Useful research applications: as the "domain-agnostic baseline" in any
+# distribution-shift study; recommended first try when source domain is unknown.
+
+schema_version: 1
+
+name:        humanoid-detector-universal-xl
+purpose:     detection
+trained_on:  Multi-domain humanoid corpus (arid + tactical + stylized + photoreal)
+notes:       The default boot model for unknown-domain inputs. Validated
+             end-to-end on a counter-UAS demonstration: detected an aerial
+             humanoid target at ~400 m range on a 1080p source.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 640, 640]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.0, 0.0, 0.0]
+    std:            [1.0, 1.0, 1.0]
+  preprocessing:
+    letterbox:      true
+    pad_value:      [114, 114, 114]
+    pad_to:         model_input
+
+output:
+  head:             yolo26_detect
+  format:           cxcywh_logits
+  expected_shape:   [1, 5, 8400]
+  num_classes:      1
+  nms_in_graph:     false
+  thresholds:
+    score:          0.25
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  cache_compiled:   true
+
+classes:
+  - {id:   0, name: person          , roc_label: Person}

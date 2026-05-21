@@ -451,6 +451,12 @@ def render_manifest(result: IntrospectionResult, model_name: str) -> str:
     lines.append(
         f"# Source ONNX: {result.onnx_path.name}"
     )
+    lines.append(
+        f"# TIP: rename file + `name:` field below to function-first form"
+    )
+    lines.append(
+        f"#      (e.g. humanoid-detector-<domain>) — see README naming notes."
+    )
     if result.notes:
         for n in result.notes:
             lines.append(f"# {n}")

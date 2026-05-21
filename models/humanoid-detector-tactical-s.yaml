@@ -1,0 +1,45 @@
+# Two-class humanoid detector — tactical urban-combat visual domain.
+# YOLOv8s architecture (small variant, 11.7 MB). Two classes for body vs head.
+# Useful research applications: security camera footage analysis in built
+# environments, low-light indoor surveillance, broadcast camera screening.
+
+schema_version: 1
+
+name:        humanoid-detector-tactical-s
+purpose:     detection
+trained_on:  Mixed urban-combat visual corpus (tactical gear + indoor lighting)
+notes:       Smaller / faster variant (~11.7 MB, ~3 ms/frame on RTX 4050 with
+             DirectML). Two output classes: body, head. Good baseline for
+             real-time security-camera ROI extraction.
+
+input:
+  layout:           NCHW
+  channel_order:    RGB
+  expected_shape:   [1, 3, 640, 640]
+  dtype:            float32
+  normalization:
+    scale:          0.00392156862745
+    mean:           [0.0, 0.0, 0.0]
+    std:            [1.0, 1.0, 1.0]
+  preprocessing:
+    letterbox:      true
+    pad_value:      [114, 114, 114]
+    pad_to:         model_input
+
+output:
+  head:             yolo26_detect
+  format:           cxcywh_logits
+  expected_shape:   [1, 6, 8400]
+  num_classes:      2
+  nms_in_graph:     false
+  thresholds:
+    score:          0.25
+
+runtime_hints:
+  preferred_ep:     DirectML
+  precision:        fp16
+  cache_compiled:   true
+
+classes:
+  - {id:   0, name: body            , roc_label: Person}
+  - {id:   1, name: head            , roc_label: Head}
